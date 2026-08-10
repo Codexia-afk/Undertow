@@ -13,7 +13,7 @@ func TestAggregator_ConcurrencyAndRace(t *testing.T) {
 	packetChan := make(chan model.PacketInfo, 100)
 	var dropped uint64 = 5
 
-	manager := NewStatsManager(60, 200, 100, &dropped)
+	manager := NewStatsManager(60, 200, 100, &dropped, anomaly.DefaultConfig())
 	agg := NewAggregator(packetChan, manager)
 
 	ctx, cancel := context.WithCancel(context.Background())

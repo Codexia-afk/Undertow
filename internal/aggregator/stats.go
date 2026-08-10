@@ -104,10 +104,11 @@ type StatsManager struct {
 	stats           Stats
 	publishedPtr    atomic.Pointer[Snapshot]
 	droppedCountPtr *uint64 // Shared pointer to atomic dropped count from capture producer
+	detector        *anomaly.Detector
 }
 
-// NewStatsManager initializes stats state with ring buffer capacities.
-func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr *uint64) *StatsManager {
+// NewStatsManager initializes stats state with ring buffer capacities and anomaly detector.
+func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr *uint64, anomalyCfg anomaly.Config) *StatsManager {
 	sm := &StatsManager{
 		stats: Stats{
 			StartTime:         time.Now(),
@@ -119,6 +120,7 @@ func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr
 			AnomaliesRing:     NewRingBuffer[model.AnomalyEvent](anomaliesCap),
 		},
 		droppedCountPtr: droppedPtr,
+		detector:        anomaly.NewDetector(anomalyCfg),
 	}
 
 	// Publish initial empty snapshot
@@ -126,7 +128,7 @@ func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr
 	return sm
 }
 
-// AddPacket updates all internal metrics for a newly decoded packet.
+// AddPacket updates all internal metrics for a newly decoded packet and evaluates anomaly heuristics.
 // OWNERSHIP: Must only be called by the aggregator goroutine.
 func (sm *StatsManager) AddPacket(pkt model.PacketInfo) {
 	st := &sm.stats
@@ -163,6 +165,7 @@ func (sm *StatsManager) AddPacket(pkt model.PacketInfo) {
 	}
 
 	// Update Flow
+	var currentFlow *model.FlowStat
 	if pkt.SrcIP != nil && pkt.DstIP != nil {
 		fk := model.FlowKey{
 			SrcIP:    pkt.SrcIP.String(),
@@ -179,10 +182,19 @@ func (sm *StatsManager) AddPacket(pkt model.PacketInfo) {
 		flow.PacketsSent++
 		flow.BytesSent += uint64(pkt.Length)
 		flow.LastSeen = pkt.Timestamp
+		currentFlow = flow
 	}
 
 	// Push to recent packets
 	st.RecentPacketsRing.Push(pkt)
+
+	// Run Anomaly Detection Heuristics
+	if sm.detector != nil {
+		events := sm.detector.CheckPacket(pkt, currentFlow)
+		for _, evt := range events {
+			sm.AddAnomaly(evt)
+		}
+	}
 }
 
 // TickSecond rolls the 1-second throughput bucket into history.
