@@ -107,10 +107,11 @@ type StatsManager struct {
 	droppedCountPtr *uint64 // Shared pointer to atomic dropped count from capture producer
 	detector        *anomaly.Detector
 	storyTracker    *narrative.StoryTracker
+	baselineMgr     *baseline.Manager
 }
 
-// NewStatsManager initializes stats state with ring buffer capacities and anomaly detector.
-func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr *uint64, anomalyCfg anomaly.Config) *StatsManager {
+// NewStatsManager initializes stats state with ring buffer capacities, anomaly detector, and baseline manager.
+func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr *uint64, anomalyCfg anomaly.Config, baselineCfg baseline.Config) *StatsManager {
 	sm := &StatsManager{
 		stats: Stats{
 			StartTime:         time.Now(),
@@ -124,6 +125,7 @@ func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr
 		droppedCountPtr: droppedPtr,
 		detector:        anomaly.NewDetector(anomalyCfg),
 		storyTracker:    narrative.NewStoryTracker(),
+		baselineMgr:     baseline.NewManager(baselineCfg),
 	}
 
 	// Publish initial empty snapshot
@@ -205,12 +207,32 @@ func (sm *StatsManager) AddPacket(pkt model.PacketInfo) {
 	}
 }
 
-// TickSecond rolls the 1-second throughput bucket into history.
+// TickSecond rolls the 1-second throughput bucket into history and evaluates behavioral baselines.
 // OWNERSHIP: Must only be called by the aggregator goroutine on a 1s ticker.
 func (sm *StatsManager) TickSecond() {
 	st := &sm.stats
+	now := time.Now()
 	st.ThroughputRing.Push(st.currentSecBytes)
 	st.currentSecBytes = 0
+
+	// Evaluate Behavioral Baselines per host
+	if sm.baselineMgr != nil {
+		for _, talker := range st.TopTalkers {
+			pktsSec := float64(talker.PacketsSent + talker.PacketsRecv)
+			bytesSec := float64(talker.BytesSent + talker.BytesRecv)
+			events := sm.baselineMgr.ObserveHost(talker.IP, pktsSec, bytesSec, 1.0, now)
+			for _, evt := range events {
+				sm.AddAnomaly(evt)
+			}
+		}
+	}
+}
+
+// SaveBaseline persists baseline data to disk on shutdown.
+func (sm *StatsManager) SaveBaseline() {
+	if sm.baselineMgr != nil {
+		_ = sm.baselineMgr.SaveToFile("")
+	}
 }
 
 // AddAnomaly records an anomaly event and passes it to the host story timeline.

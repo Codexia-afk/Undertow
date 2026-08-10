@@ -37,6 +37,7 @@ func (a *Aggregator) Run(ctx context.Context) {
 			for pkt := range a.packetChan {
 				a.manager.AddPacket(pkt)
 			}
+			a.manager.SaveBaseline()
 			a.manager.PublishSnapshot()
 			return
 
