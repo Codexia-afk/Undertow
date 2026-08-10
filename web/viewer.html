@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetWatch Remote Broadcast Dashboard</title>
+<style>
+  :root {
+    --bg-dark: #090d16;
+    --panel-bg: #111827;
+    --border: #1f2937;
+    --green: #10b981;
+    --blue: #3b82f6;
+    --cyan: #06b6d4;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --text: #f3f4f6;
+    --text-dim: #9ca3af;
+  }
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    margin: 0;
+    padding: 16px;
+    font-size: 13px;
+  }
+  .header-bar {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .grid-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; margin-bottom: 12px; }
+  .panel { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+  .panel-title { color: var(--yellow); font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 6px 10px; text-align: left; }
+  th { color: var(--cyan); border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
+  .pkt-line { font-size: 12px; padding: 3px 0; border-bottom: 1px solid #111827; }
+  .tag { padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+  .tag-live { background: #064e3b; color: #34d399; }
+</style>
+</head>
+<body>
+  <div class="header-bar">
+    <div>
+      <span style="color: var(--yellow); font-size: 16px; font-weight: bold;">🛡️ NETWATCH Remote Stream</span>
+      <span id="conn-status" class="tag tag-live" style="margin-left: 12px;">CONNECTING...</span>
+    </div>
+    <div id="stats-summary" style="color: var(--text-dim);">
+      Packets: <span id="lbl-pkts" style="color:#fff; font-weight:bold;">0</span> | 
+      Bytes: <span id="lbl-bytes" style="color:#fff; font-weight:bold;">0 B</span> | 
+      Dropped: <span id="lbl-drops" style="color:var(--red);">0</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Top Bandwidth Talkers</div>
+      <table>
+        <thead>
+          <tr>
+            <th>IP Address</th>
+            <th>Bytes Sent</th>
+            <th>Bytes Recv</th>
+            <th>Packets</th>
+            <th>Last Active</th>
+          </tr>
+        </thead>
+        <tbody id="tb-talkers">
+          <tr><td colspan="5" style="color: var(--text-dim);">Waiting for stream data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Protocol Distribution</div>
+      <div id="proto-list"></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Recent Live Packets</div>
+      <div id="packet-stream" style="max-height: 250px; overflow-y: auto;"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Security Anomalies & Alerts</div>
+      <div id="anomaly-list">
+        <div style="color: var(--green);">✓ No anomalies flagged</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  function formatBytes(bytes) {
+    if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' MB';
+    if (bytes >= 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return bytes + ' B';
+  }
+
+  const evtSource = new EventSource('/api/stream' + window.location.search);
+  const statusElem = document.getElementById('conn-status');
+
+  evtSource.onopen = () => {
+    statusElem.textContent = '● LIVE BROADCAST';
+    statusElem.className = 'tag tag-live';
+  };
+
+  evtSource.onerror = () => {
+    statusElem.textContent = '○ DISCONNECTED';
+    statusElem.style.background = '#7f1d1d';
+    statusElem.style.color = '#fca5a5';
+  };
+
+  evtSource.onmessage = (event) => {
+    const snap = JSON.parse(event.data);
+    
+    document.getElementById('lbl-pkts').textContent = snap.TotalPackets;
+    document.getElementById('lbl-bytes').textContent = formatBytes(snap.TotalBytes);
+    document.getElementById('lbl-drops').textContent = snap.DroppedPackets;
+
+    // Render Talkers
+    const talkersBody = document.getElementById('tb-talkers');
+    if (snap.TopTalkers && snap.TopTalkers.length > 0) {
+      talkersBody.innerHTML = snap.TopTalkers.slice(0, 10).map(t => `
+        <tr>
+          <td style="color: var(--cyan); font-weight: bold;">${t.IP}</td>
+          <td>${formatBytes(t.BytesSent)}</td>
+          <td>${formatBytes(t.BytesRecv)}</td>
+          <td>${t.PacketsSent + t.PacketsRecv}</td>
+          <td style="color: var(--text-dim);">${new Date(t.LastSeen).toLocaleTimeString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Render Protocols
+    const protoList = document.getElementById('proto-list');
+    if (snap.ProtocolCounts) {
+      const total = snap.TotalPackets || 1;
+      protoList.innerHTML = Object.entries(snap.ProtocolCounts).map(([proto, count]) => {
+        const pct = ((count / total) * 100).toFixed(1);
+        return `<div style="margin-bottom: 6px;">
+          <span style="display:inline-block; width: 60px; font-weight:bold;">${proto}</span>
+          <span style="color: var(--cyan);">${count}</span> (${pct}%)
+        </div>`;
+      }).join('');
+    }
+
+    // Render Packets
+    const pktStream = document.getElementById('packet-stream');
+    if (snap.RecentPackets && snap.RecentPackets.length > 0) {
+      pktStream.innerHTML = snap.RecentPackets.slice(-15).reverse().map(p => `
+        <div class="pkt-line">
+          <span style="color: var(--text-dim);">${new Date(p.Timestamp).toLocaleTimeString()}</span>
+          <span style="color: var(--cyan);">${p.SrcIP}:${p.SrcPort}</span> → 
+          <span>${p.DstIP}:${p.DstPort}</span>
+          <span style="color: var(--green); font-weight: bold;">${p.Protocol}</span> ${p.Length} B
+        </div>
+      `).join('');
+    }
+
+    // Render Anomalies
+    const anomalyList = document.getElementById('anomaly-list');
+    if (snap.Anomalies && snap.Anomalies.length > 0) {
+      anomalyList.innerHTML = snap.Anomalies.slice(-5).reverse().map(a => `
+        <div style="color: var(--red); margin-bottom: 6px; font-weight: bold;">
+          ⚠️ [${a.Kind}] ${a.SourceIP}: ${a.Detail}
+        </div>
+      `).join('');
+    }
+  };
+</script>
+</body>
+</html>
