@@ -1,184 +1,142 @@
-# NetWatch 🛡️ — Ultimate Network Traffic Analyzer & SOC Intelligence Platform
+# Undertow — Terminal SOC Workstation & Go Packet Sniffer
 
 [![Go Version](https://img.shields.io/badge/Go-1.22%2B-00ADD8?style=flat&logo=go)](https://golang.org)
-[![Version](https://img.shields.io/badge/Release-v3.0.0--Ultimate-gold.svg)](https://github.com/Codexia-afk/Undertow)
+[![Version](https://img.shields.io/badge/Release-v5.0.0--Ultimate-gold.svg)](https://github.com/Codexia-afk/Undertow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Codexia-afk/Undertow/pulls)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/Codexia-afk/Undertow)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)](https://github.com/Codexia-afk/Undertow)
 
-**NetWatch** is a high-performance, Wireshark-inspired **terminal network packet sniffer, protocol decoder, behavioral anomaly detector, and broadcast dashboard** written in pure Go. It captures live network packets off network interfaces, decodes deep layer stacks (including JA3 TLS fingerprinting without decryption), aggregates real-time bandwidth statistics, and renders an interactive, lock-free TUI dashboard equipped with automated security anomaly detection, host session stories, time-travel DVR replay, self-contained HTML export, and remote web streaming.
+> **Zero-dependency Terminal SOC Workstation & Packet Sniffer in Go with JA4+ Security & Process Correlation**
+
+**Undertow** is a single-binary, ultra-high-performance **Terminal SOC Workstation and Network Traffic Analyzer** written in pure Go 1.22+. It captures live network packets, decodes deep layer stacks, computes **JA4+ and JA3 TLS fingerprints** without decryption, correlates network flows to local OS processes (PID, Process Name, User), detects 3-sigma behavioral anomalies and threat IOCs, renders an interactive ASCII topology graph, synthesizes local offline AI incident summaries via Ollama, and exports multi-surface reports (TUI, standalone HTML with SVGs, and SSE web streaming).
 
 ---
 
-## 🌟 God-Tier Feature Matrix (Milestones 1–12 Complete)
+## Modern Wireshark & Termshark Alternative in Pure Go
 
-* 🚀 **Multi-Core Parallel Decoder**: `google/gopacket` + `libpcap` wrapper with a multi-worker pool architecture and drop-on-full backpressure.
-* 📊 **Interactive TUI Dashboard**: Live `tview` terminal dashboard with Top Talkers table, Protocol breakdown, Bandwidth sparkline (` ▂▃▄▅▆▇█`), and live packet log.
-* 🛡️ **Rule-Based & Adaptive Anomaly Heuristics**: Detects Port Scans, Large File Transfers, Suspicious DGA/Tunneling DNS domains (Shannon entropy), and 3-Sigma Behavioral Deviations.
-* 📈 **Adaptive Behavioral Baselining**: Learns per-host normal behavior (EMA + Welford variance tracking) and persists baseline profiles to `~/.netwatch/baseline.json`.
-* 📖 **Flow Story Narratives**: Synthesizes natural-language session summaries for any network host with optional IP privacy redaction (`-redact-ips`).
-* ⏩ **Time-Travel Replay Mode (DVR)**: Record live traffic to `.pcap` (`-record`) and replay recorded pcaps (`-replay`) with virtual clock controls (`Space`, `←`/`→`, `+`/`-`, `Home`/`End`).
-* 🔑 **JA3/JA3S TLS Fingerprinting**: Identifies client applications (`curl`, `Chrome`, `Go net/http`, `Python`) from unencrypted ClientHello headers without TLS decryption.
-* 📄 **Self-Contained HTML Reports**: Export 100% offline, zero-dependency HTML SOC reports (`-export-html` or `e` key) containing inline SVG vector charts.
-* 🌐 **Remote Broadcast Mode**: Broadcast read-only live metrics over Server-Sent Events (`-serve :8080` with `-serve-token`) to any browser or mobile device.
+Undertow is engineered from the ground up to replace bloated web tools and heavy packet inspection agents with a zero-alloc, single-binary workstation.
 
----
-
-## 🏗️ System Architecture
-
-```
-                    ┌─────────────────┐
-                    │  Capture Engine │   (1 Goroutine: reads pcap handle,
-                    │  (Producer)     │    non-blocking drop-on-full channel)
-                    └────────┬────────┘
-                             │ buffered channel (default: 1000)
-                             ▼
-                    ┌─────────────────┐
-                    │  Decode Pool    │   (Worker Pool: N CPU-bound goroutines
-                    │  (Workers)      │    decodes Ethernet -> IP -> TCP/UDP/DNS/HTTP/TLS)
-                    └────────┬────────┘
-                             │ chan model.PacketInfo
-                             ▼
-                    ┌─────────────────┐
-                    │  Aggregator     │   (1 Goroutine: sole owner of Stats,
-                    │  (Single Owner) │    publishes atomic.Pointer[Snapshot])
-                    └────────┬────────┘
-                             │ atomic.Pointer[Snapshot] (250ms refresh)
-                             ├─────────────────────────┬─────────────────────────┐
-                             ▼                         ▼                         ▼
-                    ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-                    │  TUI Dashboard  │       │  HTML Exporter  │       │  Remote Server  │
-                    │  (tview)        │       │  (inline SVG)   │       │  (SSE / :8080)  │
-                    └─────────────────┘       └─────────────────┘       └─────────────────┘
-```
+| Feature / Metric | **Undertow (v5.0.0)** | **Termshark** | **bandwhich** | **ntopng** | **Zeek** |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| **Zero-Alloc Concurrency** | ✅ Yes (`sync.Pool`) | ❌ No | ❌ No | ❌ No | ❌ No |
+| **JA4+ & JA3 Fingerprinting** | ✅ Built-in | ❌ No | ❌ No | ⚠️ Plugin | ✅ Script |
+| **Process-to-Socket Correlation** | ✅ Linux/macOS/Win | ❌ No | ✅ Basic | ⚠️ Agent | ❌ No |
+| **Air-Gapped Threat Intel (IOC)** | ✅ Spamhaus + Custom | ❌ No | ❌ No | ⚠️ Complex | ✅ Script |
+| **ASCII Topology Graph View** | ✅ Live (`tview`) | ❌ No | ❌ No | ❌ No | ❌ No |
+| **Local AI Incident Summary** | ✅ Local Ollama | ❌ No | ❌ No | ❌ No | ❌ No |
+| **Triple-Surface Output** | ✅ TUI / HTML / SSE | ⚠️ TUI Only | ⚠️ TUI Only | ⚠️ Web Only | ⚠️ Log Only |
+| **Single Portable Binary** | ✅ 100% Standalone | ⚠️ Requires tshark | ✅ Rust binary | ❌ Complex | ❌ Enterprise |
 
 ---
 
-## 🖥️ Cross-Platform Installation & Verification
+## Encrypted Traffic Inspection with JA4+ and JA3 Fingerprinting
 
-### 1️⃣ Linux (Ubuntu, Debian, Kali, Arch Linux, Fedora, Alpine, Linux Mint)
+Undertow inspects raw TLS ClientHello frames (`0x16 0x03`) without decrypting payloads:
+* **JA4+ Fingerprint Calculation**: Extracts protocol type (`t`), TLS version (`13`/`12`), SNI status (`d`/`i`), non-GREASE cipher count, extension count, ALPN characters (`h2`), and SHA256 truncated digests of sorted ciphers and extensions.
+* **Malware Signature Lookup**: Matches generated hashes against an embedded offline lookup database (`ja4db.json`) to detect malware tools (**Cobalt Strike C2**, **LummaC2 Infostealer**, **Evilginx**, **IcedID**) and legitimate clients (**Chrome**, **curl**, **Go net/http**).
 
-#### Ubuntu / Debian / Linux Mint
+---
+
+## Local Process-to-Socket Correlation (Linux, macOS, Windows)
+
+Undertow maps active 5-tuple network flows (`SrcIP:SrcPort -> DstIP:DstPort`) directly to operating system processes:
+* **Linux**: Correlates socket inodes from `/proc/net/tcp` and `/proc/net/udp` to `/proc/[pid]/fd/*`, executable paths in `/proc/[pid]/exe`, and user owners from `/proc/[pid]/status`.
+* **Windows**: Performs `netstat -ano` / `GetExtendedTcpTable` endpoint correlation.
+* **macOS**: Resolves sockets via `lsof -i -n -P` inspection.
+* **Process Matrix (`HotKey: P`)**: Displays a real-time TUI panel listing `[PID] [PROCESS NAME] [USER] [EXECUTABLE PATH]`.
+
+---
+
+## Air-Gapped Threat Intelligence & Anomaly Detection
+
+* **Threat IOC Engine**: Matches active traffic against embedded Spamhaus DROP CIDR blocks, exact malicious C2 IPs, and C2 domain indicators. Supports custom threat lists via `--threat-feed feeds.json`.
+* **3-Sigma Adaptive Baselining**: Learns normal per-host traffic behavior using Exponential Moving Averages (EMA) and Welford running variance, persisting baseline profiles to `~/.undertow/baseline.json`.
+* **Security Badging**: Marks suspicious flows in the packet stream with a bold **`[!] THREAT_ALERT`** badge.
+
+---
+
+## 🚀 Key Features Breakdown
+
+### 1. ASCII Network Topology Graph View (`HotKey: g`)
+Text-mode node-and-edge layout engine rendered via `tview` grouping local subnet endpoints versus remote servers, with edges styled by real-time bandwidth consumption (`────>`, `======>`, `<=====>`).
+
+### 2. "Ask AI" Local Incident Response (`HotKey: A`)
+Connects to a local Ollama LLM instance (`http://localhost:11434`, model `llama3`/`mistral`) to transform host Flow Story Narratives and Anomaly Logs into plain-English incident response summaries. Includes an offline rule synthesizer when Ollama is unreachable.
+
+### 3. Triple-Surface Reporting Engine
+1. **Live Interactive TUI**: Terminal dashboard built with `tview` using lock-free `atomic.Pointer[Snapshot]` read paths.
+2. **Self-Contained HTML Report**: Exports 100% offline HTML SOC reports (`--export report.html` or `e` key) containing inline vector SVG charts.
+3. **Remote Web Streaming**: Broadcasts live metrics over Server-Sent Events (`--listen :8080` with `--serve-token`) to any browser.
+
+### 4. Session Snapshot Diffing (`undertow diff`)
+CLI subcommand `undertow diff captureA.json captureB.json [--output-md diff.md]` comparing session snapshots to highlight endpoint drift, host throughput deviations (>20%), and novel fingerprints.
+
+### 5. Headless Webhook Pipeline (`--headless` & `--webhook-url`)
+Runs in headless daemon mode, streaming real-time JSON alert payloads to external HTTP POST webhooks for SIEM / Slack integration.
+
+---
+
+## 💻 Quick Start & Installation
+
+### Linux (Ubuntu, Debian, Kali, Arch Linux, Fedora, Alpine, Linux Mint)
+
 ```bash
+# Install prerequisites (Debian/Ubuntu/Kali/Mint)
 sudo apt update && sudo apt install -y libpcap-dev build-essential git
-go build -o netwatch ./cmd/netwatch
-sudo ./netwatch -i eth0
+
+# Clone and Build Undertow
+git clone https://github.com/Codexia-afk/Undertow.git
+cd Undertow
+go build -o undertow ./cmd/undertow
+
+# Grant net capture capabilities & run
+sudo setcap cap_net_raw,cap_net_admin=eip ./undertow
+./undertow -i eth0 -serve :8080
 ```
 
-#### Kali Linux
-```bash
-sudo apt update && sudo apt install -y libpcap-dev
-go build -o netwatch ./cmd/netwatch
-sudo ./netwatch -i wlan0 -filter "port 80 or port 443" -record kali.pcap
-```
-
-#### Arch Linux / Manjaro
-```bash
-sudo pacman -Syu --needed libpcap go base-devel
-go build -o netwatch ./cmd/netwatch
-sudo ./netwatch -i eth0
-```
-
-#### Fedora / RHEL
-```bash
-sudo dnf install -y libpcap-devel gcc
-go build -o netwatch ./cmd/netwatch
-sudo ./netwatch -i eth0
-```
-
-#### Alpine Linux
-```bash
-apk add --no-cache libpcap-dev build-base go git
-go build -o netwatch ./cmd/netwatch
-sudo ./netwatch -i eth0
-```
-
-### 2️⃣ macOS (Apple Silicon M1/M2/M3/M4 & Intel)
+### macOS (Apple Silicon M1/M2/M3/M4 & Intel)
 
 ```bash
 brew install libpcap go
-go build -o netwatch ./cmd/netwatch
-sudo ./netwatch -i en0 -record macos_capture.pcap
+git clone https://github.com/Codexia-afk/Undertow.git
+cd Undertow
+go build -o undertow ./cmd/undertow
+sudo ./undertow -i en0 -export report.html
 ```
 
-### 3️⃣ Windows (PowerShell & Command Prompt)
+### Windows (PowerShell & Command Prompt)
 
 ```powershell
-# Run all unit tests
-go test -v ./internal/...
+# 1. Install Npcap (WinPcap compatibility mode enabled)
+# 2. Build or run Undertow
+go build -o undertow.exe ./cmd/undertow
 
-# Replay any standard .pcap file in offline DVR mode (no admin privileges required!)
-.\netwatch.exe -replay C:\captures\sample.pcap -serve :8080
+# 3. Replay offline pcap or run session diff
+.\undertow.exe -replay C:\captures\sample.pcap -listen :8080
+.\undertow.exe diff snapA.json snapB.json --output-md diff.md
 ```
 
 ---
 
-## ⌨️ TUI Keyboard Controls
+## ⌨️ Interactive Keyboard Shortcuts Cheat Sheet
 
-| Key | Action |
+| Shortcut Key | Action / Feature View |
 |:---:|:---|
-| `q` / `Q` | Gracefully quit application |
-| `p` / `P` | Pause / resume live packet stream auto-scrolling |
-| `/` | Open interactive BPF capture filter input overlay |
-| `s` / `n` | View Flow Story narrative for selected host |
-| `e` / `E` | Instantly export self-contained HTML SOC report |
-| `Space` | (Replay Mode) Play / Pause virtual clock |
-| `→` / `←` | (Replay Mode) Step 5s forward / backward |
-| `+` / `-` | (Replay Mode) Cycle playback speed multiplier (`0.5x` → `8.0x`) |
+| `g` / `G` | Toggle **ASCII Network Topology Graph** view |
+| `P` | Open **Process Matrix** panel (PID, Process Name, User, Executable Path) |
+| `A` / `a` | Trigger **Ask AI Local Incident Response** summary (Ollama) |
+| `s` / `n` | View **Host Flow Story Narrative** for selected talker IP |
+| `e` / `E` | Instantly export self-contained **HTML SOC Report** with vector SVGs |
+| `/` | Open interactive **BPF Capture Filter** input modal |
+| `p` | Pause / resume live packet stream auto-scrolling |
+| `Space` | (Replay Mode) Pause / play virtual clock |
+| `→` / `←` | (Replay Mode) Step 5 seconds forward / backward |
+| `+` / `-` | (Replay Mode) Cycle virtual playback speed (`0.5x` → `8.0x`) |
 | `Home` / `End` | (Replay Mode) Jump to start / end of recording |
-
----
-
-## ⚙️ Complete Command-Line Options
-
-```text
-Flags:
-  -i string
-        Network interface to capture on (required for live capture)
-  -filter string
-        Initial BPF capture filter (e.g. 'port 80', 'tcp and host 10.0.0.5')
-  -workers int
-        Number of parallel decoding worker goroutines (default: NumCPU)
-  -bufsize int
-        Packet channel buffer size (default: 1000)
-  -redact-ips
-        Anonymize IP addresses in narrative summaries for privacy
-  -record string
-        Record captured live traffic to a .pcap file on disk
-  -replay string
-        Replay a recorded .pcap file with virtual clock DVR controls
-  -export-html string
-        Export session metrics to a self-contained HTML report file on exit
-  -serve string
-        Start HTTP broadcast server for remote read-only web monitoring (e.g. ':8080')
-  -serve-token string
-        Optional secret authentication token for remote broadcast server
-  -scan-threshold int
-        Distinct destination ports threshold for port scan alert (default: 15)
-  -transfer-threshold-mb uint
-        Flow transfer threshold in MB for large transfer alert (default: 50)
-  -dns-entropy-threshold float
-        Shannon entropy threshold for suspicious DNS alert (default: 3.5)
-  -baseline-warmup int
-        Warm-up duration in seconds for adaptive behavioral baselining (default: 60)
-  -baseline-file string
-        File path to persist host behavioral baselining state
-  -no-tui
-        Disable TUI dashboard and print summary stream to stdout
-```
-
----
-
-## 🧪 Testing
-
-```bash
-make test
-# OR
-go test -race -v ./internal/...
-```
+| `q` / `Q` | Gracefully exit application |
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+Distributed under the [MIT License](LICENSE).
