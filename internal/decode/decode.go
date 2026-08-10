@@ -9,6 +9,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"netwatch/internal/model"
+	"netwatch/internal/tls"
 )
 
 // DecodePacket transforms a gopacket.Packet into a normalized model.PacketInfo.
@@ -107,6 +108,19 @@ func DecodePacket(packet gopacket.Packet) model.PacketInfo {
 				info.HTTPMethod = method
 				info.HTTPHost = host
 				info.HTTPPath = path
+			}
+		}
+	}
+
+	// C. TLS ClientHello / JA3 Fingerprinting
+	if info.Protocol == "TCP" {
+		if appLayer := packet.ApplicationLayer(); appLayer != nil {
+			payload := appLayer.Payload()
+			if ja3Res, ok := tls.ParseClientHello(payload); ok {
+				info.Protocol = "TLS"
+				info.JA3Hash = ja3Res.Hash
+				info.JA3Label = ja3Res.Label
+				info.JA3Raw = ja3Res.RawString
 			}
 		}
 	}

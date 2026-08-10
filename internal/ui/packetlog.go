@@ -84,6 +84,8 @@ func (pl *PacketLogPanel) Update(snap *aggregator.Snapshot, inAppFilter string) 
 			colorTag = "[yellow]"
 		case "HTTP":
 			colorTag = "[magenta]"
+		case "TLS":
+			colorTag = "[bold green]"
 		case "ICMP":
 			colorTag = "[red]"
 		}
@@ -95,6 +97,8 @@ func (pl *PacketLogPanel) Update(snap *aggregator.Snapshot, inAppFilter string) 
 			extra = fmt.Sprintf(" Q:%s (%s)", pkt.DNSQuery, pkt.DNSType)
 		} else if pkt.Protocol == "HTTP" && pkt.HTTPMethod != "" {
 			extra = fmt.Sprintf(" %s %s%s", pkt.HTTPMethod, pkt.HTTPHost, pkt.HTTPPath)
+		} else if pkt.Protocol == "TLS" && pkt.JA3Hash != "" {
+			extra = fmt.Sprintf(" JA3:[yellow]%s[white] (%s)", pkt.JA3Hash[:8], pkt.JA3Label)
 		}
 
 		line := fmt.Sprintf("%s  %-21s -> %-21s  %s%-6s[white] %5d B%s\n",

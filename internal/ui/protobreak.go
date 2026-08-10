@@ -25,7 +25,7 @@ func (pb *ProtocolBreakdownPanel) View() *tview.TextView {
 }
 
 func (pb *ProtocolBreakdownPanel) Update(snap *aggregator.Snapshot) {
-	protocols := []string{"TCP", "UDP", "ICMP", "DNS", "HTTP", "ARP", "Other"}
+	protocols := []string{"TCP", "UDP", "TLS", "ICMP", "DNS", "HTTP", "ARP", "Other"}
 	total := snap.TotalPackets
 
 	var content string
@@ -57,6 +57,8 @@ func (pb *ProtocolBreakdownPanel) Update(snap *aggregator.Snapshot) {
 			colorStr = "[cyan]"
 		case "UDP":
 			colorStr = "[blue]"
+		case "TLS":
+			colorStr = "[bold green]"
 		case "DNS":
 			colorStr = "[yellow]"
 		case "HTTP":

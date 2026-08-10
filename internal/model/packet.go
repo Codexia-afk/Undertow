@@ -91,6 +91,9 @@ type PacketInfo struct {
 	HTTPMethod string // GET, POST, etc.
 	HTTPHost   string
 	HTTPPath   string
+	JA3Hash    string // TLS Client Hello MD5 hash
+	JA3Label   string // Matched client label (e.g. "curl / libcurl")
+	JA3Raw     string // Raw JA3 string
 	Payload    []byte
 }
 
