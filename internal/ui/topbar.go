@@ -30,7 +30,7 @@ func (tb *TopBar) View() *tview.TextView {
 	return tb.view
 }
 
-func (tb *TopBar) Update(snap *aggregator.Snapshot, paused bool) {
+func (tb *TopBar) Update(snap *aggregator.Snapshot, paused bool, filterExpr string) {
 	elapsed := time.Since(snap.StartTime).Truncate(time.Second)
 
 	pauseState := "[green]LIVE[white]"
@@ -38,9 +38,15 @@ func (tb *TopBar) Update(snap *aggregator.Snapshot, paused bool) {
 		pauseState = "[yellow]PAUSED[white]"
 	}
 
+	filterDisplay := "[gray]None[white]"
+	if filterExpr != "" {
+		filterDisplay = fmt.Sprintf("[yellow]%s[white]", filterExpr)
+	}
+
 	text := fmt.Sprintf(
-		" [cyan]IFACE:[white] %-8s | [cyan]TIME:[white] %s | [cyan]PACKETS:[white] [bold]%d[white] | [cyan]BYTES:[white] [bold]%s[white] | [cyan]DROPPED:[white] [red]%d[white] | [cyan]STATUS:[white] %s",
+		" [cyan]IFACE:[white] %-8s | [cyan]FILTER:[white] %s | [cyan]TIME:[white] %s | [cyan]PKTS:[white] [bold]%d[white] | [cyan]BYTES:[white] [bold]%s[white] | [cyan]DROPPED:[white] [red]%d[white] | [cyan]STATUS:[white] %s",
 		tb.iface,
+		filterDisplay,
 		elapsed.String(),
 		snap.TotalPackets,
 		formatBytes(snap.TotalBytes),
