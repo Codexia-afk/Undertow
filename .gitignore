@@ -1,0 +1,19 @@
+# Binaries
+netwatch
+netwatch.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Output of go build
+bin/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
