@@ -1,69 +1,86 @@
-# NetWatch 🛡️
+# NetWatch 🛡️ — Terminal-Native Network Traffic Analyzer & SOC Dashboard in Go
 
-> A Wireshark-inspired, terminal-native network traffic analyzer written in Go. Captures live packets off a network interface, decodes protocol layers, aggregates real-time statistics, and renders a live TUI dashboard with anomaly detection.
+[![Go Version](https://img.shields.io/badge/Go-1.22%2B-00ADD8?style=flat&logo=go)](https://golang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Codexia-afk/Undertow/pulls)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-lightgrey)](https://github.com/Codexia-afk/Undertow)
+
+**NetWatch** is a high-performance, Wireshark-inspired **terminal network packet sniffer, traffic analyzer, and security monitoring dashboard** written in pure Go. It captures live network packets off Ethernet/Wi-Fi interfaces, decodes deep protocol stacks, aggregates real-time bandwidth statistics, and renders an interactive, lock-free TUI dashboard equipped with automated security anomaly detection and human-readable session narratives.
 
 ---
 
-## 🏗️ Architecture
+## 🌟 Key Features
+
+* 🚀 **High-Throughput Packet Engine**: Built on `google/gopacket` + `libpcap` with a lock-free multi-worker concurrency model.
+* 📊 **Live TUI Dashboard**: Real-time interactive terminal UI using `tview` featuring Top Talker tables, Protocol breakdowns, Bandwidth sparklines (` ▂▃▄▅▆▇█`), and live packet feeds.
+* 🛡️ **Automated Security Anomaly Heuristics**: Detects Port Scans, Large File Transfers, and Suspicious DNS Tunneling/DGA domains (Shannon entropy analysis).
+* 📖 **Flow Story Narratives**: Synthesizes natural-language session summaries for any network host (e.g. *"Host A resolved api.domain.com and established a 4.2 MB HTTPS session..."*).
+* 🔒 **Privacy Mode (`-redact-ips`)**: Anonymizes IP addresses on the fly for privacy-safe screen sharing and reporting.
+* ⚡ **Kernel BPF Filtering**: Live interactive filter configuration (`/` key) with zero-copy BPF compilation (`port 443`, `tcp and host 10.0.0.5`).
+* 🪶 **Single Binary Zero-Dependency Deployment**: Compiles down to a standalone binary for instant triage on servers and edge devices.
+
+---
+
+## 🏗️ Architecture & Concurrency Model
 
 ```
                     ┌─────────────────┐
-                    │  Capture Layer  │   (1 goroutine: reads pcap.Handle,
-                    │  (Producer)     │    non-blocking send -> buffered channel)
+                    │  Capture Engine │   (1 Goroutine: reads pcap handle,
+                    │  (Producer)     │    non-blocking drop-on-full channel)
                     └────────┬────────┘
                              │ buffered channel (default: 1000)
                              ▼
                     ┌─────────────────┐
-                    │  Decode Pool    │   (Worker Pool: N goroutines decode layers
-                    │                 │    into normalized PacketInfo structs)
+                    │  Decode Pool    │   (Worker Pool: N CPU-bound goroutines
+                    │  (Workers)      │    decoding Ethernet -> IP -> TCP/UDP/DNS/HTTP)
                     └────────┬────────┘
-                             │ chan PacketInfo
+                             │ chan model.PacketInfo
                              ▼
                     ┌─────────────────┐
-                    │  Aggregator     │   (1 goroutine: sole owner of Stats state,
+                    │  Aggregator     │   (1 Goroutine: sole owner of Stats,
                     │  (Single Owner) │    publishes atomic.Pointer[Snapshot])
                     └────────┬────────┘
-                             │ atomic.Pointer[Snapshot] (250ms interval)
+                             │ atomic.Pointer[Snapshot] (250ms refresh)
                              ▼
                     ┌─────────────────┐
                     │  TUI Renderer   │   (tview event loop reads Snapshot
-                    │  (Consumer)     │    and repaints widgets)
+                    │  (Consumer)     │    and repaints UI lock-free)
                     └─────────────────┘
 ```
 
 ---
 
-## 📋 System Prerequisites
+## 📦 Prerequisites
 
-Before building NetWatch, `libpcap` development libraries must be installed on your system:
+NetWatch requires `libpcap` runtime headers to interface with kernel packet rings.
 
-### Linux (Debian/Ubuntu)
+### Linux (Debian / Ubuntu / Kali / RHEL)
 ```bash
-sudo apt-get update
-sudo apt-get install -y libpcap-dev build-essential
+sudo apt-get update && sudo apt-get install -y libpcap-dev build-essential
 ```
 
-### macOS
+### macOS (Homebrew / Xcode)
 ```bash
-# Installed automatically via Xcode CLI Tools or Homebrew:
 brew install libpcap
 ```
 
 ---
 
-## 🚀 Building & Installation
+## ⚡ Quick Start & Installation
 
 ```bash
-# Clone repository
+# 1. Clone the repository
 git clone https://github.com/Codexia-afk/Undertow.git
 cd Undertow
 
-# Download dependencies & build
+# 2. Build the binary
 go build -o netwatch ./cmd/netwatch
+
+# 3. Run live dashboard (requires root permissions for network capture)
+sudo ./netwatch -i eth0
 ```
 
-### Running without `sudo` (Linux Capabilities)
-Instead of running as root with `sudo`, grant raw socket access to the binary:
+### Run without `sudo` (Linux Capabilities)
 ```bash
 sudo setcap cap_net_raw,cap_net_admin=eip ./netwatch
 ./netwatch -i eth0
@@ -71,48 +88,57 @@ sudo setcap cap_net_raw,cap_net_admin=eip ./netwatch
 
 ---
 
-## ⚡ Usage Examples
+## ⌨️ Interactive Keybindings
 
-### 1. Basic Interactive TUI
-```bash
-sudo ./netwatch -i eth0
-```
+| Key | Description |
+|:---:|:---|
+| `q` / `Q` | Gracefully quit application |
+| `p` / `P` | Pause / resume live packet stream auto-scrolling |
+| `/` | Open BPF capture filter input overlay |
+| `s` / `n` | View Flow Story narrative for selected host |
+| `Mouse` / `Arrows` | Select rows in Top Talkers table |
 
-### 2. Capture with BPF Kernel Filter
-```bash
-sudo ./netwatch -i eth0 -filter "port 443"
-```
+---
 
-### 3. Custom Anomaly Thresholds & Worker Tuning
-```bash
-sudo ./netwatch -i eth0 -workers 8 -scan-threshold 10 -transfer-threshold-mb 100
+## ⚙️ Command-Line Reference
+
+```text
+Usage: netwatch -i <interface> [flags]
+
+Flags:
+  -i string
+        Network interface to capture on (required, e.g. eth0, wlan0, en0)
+  -filter string
+        Initial BPF capture filter (e.g. 'port 80', 'tcp and host 10.0.0.5')
+  -workers int
+        Number of parallel decoding worker goroutines (default: NumCPU)
+  -bufsize int
+        Packet channel buffer size (default: 1000)
+  -redact-ips
+        Anonymize IP addresses in narratives for privacy
+  -scan-threshold int
+        Distinct destination ports threshold for port scan alert (default: 15)
+  -transfer-threshold-mb uint
+        Flow transfer threshold in MB for large transfer alert (default: 50)
+  -dns-entropy-threshold float
+        Shannon entropy threshold for suspicious DNS alert (default: 3.5)
+  -no-tui
+        Disable TUI and output periodic stats summary to stdout
 ```
 
 ---
 
-## ⌨️ Dashboard Keybindings
+## 🧪 Running Unit Tests
 
-| Key | Action |
-|-----|--------|
-| `q` | Quit application gracefully |
-| `p` | Toggle pause/resume packet log stream |
-| `/` | Open interactive BPF filter input overlay |
-| `Mouse / Arrows` | Navigate rows in the Top Talkers table |
+```bash
+# Run unit tests with Go race detector
+make test
+# OR manually:
+go test -race -v ./internal/...
+```
 
 ---
 
-## ⚙️ CLI Flags
+## 📄 License
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-i` | `""` | Network interface to capture on (**required**) |
-| `-filter` | `""` | Initial BPF capture filter (e.g. `'port 80'`, `'tcp and host 10.0.0.5'`) |
-| `-snaplen` | `65535` | Snap length for packet capture |
-| `-promisc` | `true` | Enable promiscuous mode |
-| `-timeout` | `1` | Read timeout in seconds |
-| `-workers` | `NumCPU()` | Number of parallel decoding worker goroutines |
-| `-bufsize` | `1000` | Packet channel buffer size (drop-on-full backpressure) |
-| `-scan-threshold` | `15` | Distinct destination ports per source IP threshold for port scan alert |
-| `-transfer-threshold-mb` | `50` | Flow transfer byte threshold in MB for large transfer alert |
-| `-dns-entropy-threshold` | `3.5` | Shannon entropy threshold for suspicious DNS domain alert |
-| `-no-tui` | `false` | Disable TUI dashboard and output summary stream to stdout |
+This project is open-source under the [MIT License](LICENSE).
