@@ -59,6 +59,8 @@ type FlowStat struct {
 	BytesSent   uint64
 	PacketsSent uint64
 	LastSeen    time.Time
+	PID         int
+	ProcessName string
 }
 
 // AnomalyEvent describes a flagged security anomaly event.

@@ -11,6 +11,7 @@ import (
 	"netwatch/internal/aggregator"
 	"netwatch/internal/replay"
 	"netwatch/internal/report"
+	"netwatch/internal/topology"
 )
 
 type Dashboard struct {
@@ -24,6 +25,7 @@ type Dashboard struct {
 	throughput     *ThroughputPanel
 	anomalyPanel   *AnomalyPanel
 	storyPanel     *StoryPanel
+	processPanel   *ProcessListPanel
 	mainFlex       *tview.Flex
 
 	bpfFilterExpr   string
@@ -34,6 +36,9 @@ type Dashboard struct {
 	filterInput     *tview.InputField
 	filterErrorMsg  *tview.TextView
 	storyModal      *tview.Flex
+	topoModal       *tview.Flex
+	topoView        *tview.TextView
+	procModal       *tview.Flex
 }
 
 func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter string, applyFilterFunc func(expr string) error, redactIPs bool, replayEngine *replay.ReplayEngine) *Dashboard {
@@ -47,6 +52,7 @@ func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter strin
 	throughput := NewThroughputPanel()
 	anomalyPanel := NewAnomalyPanel()
 	storyPanel := NewStoryPanel(redactIPs)
+	processPanel := NewProcessListPanel()
 
 	// Top Half Split (Top Talkers + Protocol Breakdown)
 	topHalf := tview.NewFlex().SetDirection(tview.FlexColumn).
@@ -78,6 +84,7 @@ func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter strin
 		throughput:      throughput,
 		anomalyPanel:    anomalyPanel,
 		storyPanel:      storyPanel,
+		processPanel:    processPanel,
 		mainFlex:        mainFlex,
 		bpfFilterExpr:   initialFilter,
 		applyFilterFunc: applyFilterFunc,
@@ -87,6 +94,8 @@ func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter strin
 
 	d.setupFilterModal()
 	d.setupStoryModal()
+	d.setupTopoModal()
+	d.setupProcModal()
 	d.setupKeybindings()
 	return d
 }
@@ -156,21 +165,59 @@ func (d *Dashboard) setupStoryModal() {
 	d.pages.AddPage("storyModal", d.storyModal, true, false)
 }
 
+func (d *Dashboard) setupTopoModal() {
+	d.topoView = tview.NewTextView().SetDynamicColors(true).SetScrollable(true)
+	topoBox := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(d.topoView, 0, 1, true).
+		AddItem(tview.NewTextView().SetText(" Press ESC to return to main dashboard ").SetTextAlign(tview.AlignCenter), 1, 1, false)
+
+	topoBox.SetBorder(true).SetTitle(" Network Topology Graph ").SetTitleAlign(tview.AlignCenter)
+	topoBox.SetBorderColor(tcell.ColorCyan)
+
+	d.topoModal = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexColumn).
+			AddItem(nil, 0, 1, false).
+			AddItem(topoBox, 95, 1, true).
+			AddItem(nil, 0, 1, false), 22, 1, true).
+		AddItem(nil, 0, 1, false)
+
+	d.pages.AddPage("topoModal", d.topoModal, true, false)
+}
+
+func (d *Dashboard) setupProcModal() {
+	procBox := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(d.processPanel.View(), 0, 1, true).
+		AddItem(tview.NewTextView().SetText(" Press ESC to return to main dashboard ").SetTextAlign(tview.AlignCenter), 1, 1, false)
+
+	procBox.SetBorder(true).SetTitle(" Socket-to-Process List ").SetTitleAlign(tview.AlignCenter)
+	procBox.SetBorderColor(tcell.ColorYellow)
+
+	d.procModal = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexColumn).
+			AddItem(nil, 0, 1, false).
+			AddItem(procBox, 85, 1, true).
+			AddItem(nil, 0, 1, false), 18, 1, true).
+		AddItem(nil, 0, 1, false)
+
+	d.pages.AddPage("procModal", d.procModal, true, false)
+}
+
 func (d *Dashboard) setupKeybindings() {
 	d.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		frontPage, _ := d.pages.GetFrontPage()
 		if frontPage == "filterModal" {
 			return event
 		}
-		if frontPage == "storyModal" {
-			if event.Key() == tcell.KeyEscape || event.Rune() == 's' || event.Rune() == 'S' {
-				d.pages.HidePage("storyModal")
+		if frontPage == "storyModal" || frontPage == "topoModal" || frontPage == "procModal" {
+			if event.Key() == tcell.KeyEscape || event.Rune() == 'g' || event.Rune() == 'P' {
+				d.pages.HidePage(frontPage)
 				return nil
 			}
 			return event
 		}
 
-		// Replay navigation keybindings
 		if d.replayEngine != nil {
 			switch event.Key() {
 			case tcell.KeyRight:
@@ -207,6 +254,17 @@ func (d *Dashboard) setupKeybindings() {
 					d.replayEngine.SetSpeed(1.0)
 				}
 				return nil
+			case 'g', 'G':
+				snap := d.statsManager.GetSnapshot()
+				d.topoView.SetText(topology.RenderTopologyGraph(snap))
+				d.pages.ShowPage("topoModal")
+				d.app.SetFocus(d.topoView)
+				return nil
+			case 'P':
+				d.processPanel.Update()
+				d.pages.ShowPage("procModal")
+				d.app.SetFocus(d.processPanel.View())
+				return nil
 			case 'e', 'E':
 				snap := d.statsManager.GetSnapshot()
 				fileName := fmt.Sprintf("netwatch_report_%s.html", time.Now().Format("150405"))
@@ -220,7 +278,7 @@ func (d *Dashboard) setupKeybindings() {
 			case 'q', 'Q':
 				d.app.Stop()
 				return nil
-			case 'p', 'P':
+			case 'p':
 				d.packetLog.TogglePause()
 				return nil
 			case '/':

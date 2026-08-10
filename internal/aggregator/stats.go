@@ -5,7 +5,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"netwatch/internal/anomaly"
+	"netwatch/internal/baseline"
 	"netwatch/internal/model"
+	"netwatch/internal/narrative"
+	"netwatch/internal/webhook"
 )
 
 // TalkerStat records per-IP bandwidth and packet counts.
@@ -108,10 +112,16 @@ type StatsManager struct {
 	detector        *anomaly.Detector
 	storyTracker    *narrative.StoryTracker
 	baselineMgr     *baseline.Manager
+	webhookSender   *webhook.Sender
 }
 
-// NewStatsManager initializes stats state with ring buffer capacities, anomaly detector, and baseline manager.
-func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr *uint64, anomalyCfg anomaly.Config, baselineCfg baseline.Config) *StatsManager {
+// NewStatsManager initializes stats state with ring buffer capacities, anomaly detector, baseline manager, and optional webhook sender.
+func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr *uint64, anomalyCfg anomaly.Config, baselineCfg baseline.Config, webhookURL string) *StatsManager {
+	var ws *webhook.Sender
+	if webhookURL != "" {
+		ws = webhook.NewSender(webhookURL)
+	}
+
 	sm := &StatsManager{
 		stats: Stats{
 			StartTime:         time.Now(),
@@ -126,6 +136,7 @@ func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr
 		detector:        anomaly.NewDetector(anomalyCfg),
 		storyTracker:    narrative.NewStoryTracker(),
 		baselineMgr:     baseline.NewManager(baselineCfg),
+		webhookSender:   ws,
 	}
 
 	// Publish initial empty snapshot
@@ -241,6 +252,11 @@ func (sm *StatsManager) AddAnomaly(evt model.AnomalyEvent) {
 	sm.stats.AnomaliesRing.Push(evt)
 	if sm.storyTracker != nil {
 		sm.storyTracker.RecordAnomaly(evt)
+	}
+	if sm.webhookSender != nil {
+		go func(e model.AnomalyEvent) {
+			_ = sm.webhookSender.SendAnomalyAlert(e)
+		}(evt)
 	}
 }
 
