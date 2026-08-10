@@ -21,16 +21,19 @@ type Dashboard struct {
 	packetLog      *PacketLogPanel
 	throughput     *ThroughputPanel
 	anomalyPanel   *AnomalyPanel
+	storyPanel     *StoryPanel
 	mainFlex       *tview.Flex
 
-	bpfFilterExpr  string
-	applyFilterFunc func(expr string) error
-	filterModal    *tview.Flex
-	filterInput    *tview.InputField
-	filterErrorMsg *tview.TextView
+	bpfFilterExpr   string
+	applyFilterFunc  func(expr string) error
+	redactIPs       bool
+	filterModal     *tview.Flex
+	filterInput     *tview.InputField
+	filterErrorMsg  *tview.TextView
+	storyModal      *tview.Flex
 }
 
-func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter string, applyFilterFunc func(expr string) error) *Dashboard {
+func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter string, applyFilterFunc func(expr string) error, redactIPs bool) *Dashboard {
 	app := tview.NewApplication()
 	pages := tview.NewPages()
 
@@ -40,6 +43,7 @@ func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter strin
 	packetLog := NewPacketLogPanel()
 	throughput := NewThroughputPanel()
 	anomalyPanel := NewAnomalyPanel()
+	storyPanel := NewStoryPanel(redactIPs)
 
 	// Top Half Split (Top Talkers + Protocol Breakdown)
 	topHalf := tview.NewFlex().SetDirection(tview.FlexColumn).
@@ -70,12 +74,15 @@ func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter strin
 		packetLog:       packetLog,
 		throughput:      throughput,
 		anomalyPanel:    anomalyPanel,
+		storyPanel:      storyPanel,
 		mainFlex:        mainFlex,
 		bpfFilterExpr:   initialFilter,
 		applyFilterFunc: applyFilterFunc,
+		redactIPs:       redactIPs,
 	}
 
 	d.setupFilterModal()
+	d.setupStoryModal()
 	d.setupKeybindings()
 	return d
 }
@@ -115,7 +122,6 @@ func (d *Dashboard) setupFilterModal() {
 	modalBox.SetBorder(true).SetTitle(" BPF Filter Config ").SetTitleAlign(tview.AlignCenter)
 	modalBox.SetBorderColor(tcell.ColorYellow)
 
-	// Center modal overlay
 	d.filterModal = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexColumn).
@@ -127,10 +133,36 @@ func (d *Dashboard) setupFilterModal() {
 	d.pages.AddPage("filterModal", d.filterModal, true, false)
 }
 
+func (d *Dashboard) setupStoryModal() {
+	storyBox := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(d.storyPanel.View(), 0, 1, true).
+		AddItem(tview.NewTextView().SetText(" Press ESC to return to main dashboard ").SetTextAlign(tview.AlignCenter), 1, 1, false)
+
+	storyBox.SetBorder(true).SetTitle(" Host Flow Narrative ").SetTitleAlign(tview.AlignCenter)
+	storyBox.SetBorderColor(tcell.ColorGreen)
+
+	d.storyModal = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexColumn).
+			AddItem(nil, 0, 1, false).
+			AddItem(storyBox, 90, 1, true).
+			AddItem(nil, 0, 1, false), 20, 1, true).
+		AddItem(nil, 0, 1, false)
+
+	d.pages.AddPage("storyModal", d.storyModal, true, false)
+}
+
 func (d *Dashboard) setupKeybindings() {
 	d.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// If modal is active, let input field handle key events
-		if name, _ := d.pages.GetFrontPage(); name == "filterModal" {
+		frontPage, _ := d.pages.GetFrontPage()
+		if frontPage == "filterModal" {
+			return event
+		}
+		if frontPage == "storyModal" {
+			if event.Key() == tcell.KeyEscape || event.Rune() == 's' || event.Rune() == 'S' {
+				d.pages.HidePage("storyModal")
+				return nil
+			}
 			return event
 		}
 
@@ -147,6 +179,13 @@ func (d *Dashboard) setupKeybindings() {
 				d.filterErrorMsg.SetText("")
 				d.pages.ShowPage("filterModal")
 				d.app.SetFocus(d.filterInput)
+				return nil
+			case 's', 'S', 'n', 'N':
+				selectedIP := d.topTalkers.SelectedIP()
+				snap := d.statsManager.GetSnapshot()
+				d.storyPanel.Update(snap, selectedIP)
+				d.pages.ShowPage("storyModal")
+				d.app.SetFocus(d.storyPanel.View())
 				return nil
 			}
 		}
@@ -167,6 +206,7 @@ func (d *Dashboard) Run(ctx context.Context) error {
 				return
 			case <-ticker.C:
 				snap := d.statsManager.GetSnapshot()
+				selectedIP := d.topTalkers.SelectedIP()
 				d.app.QueueUpdateDraw(func() {
 					d.topBar.Update(snap, d.packetLog.IsPaused(), d.bpfFilterExpr)
 					d.topTalkers.Update(snap)
@@ -174,6 +214,7 @@ func (d *Dashboard) Run(ctx context.Context) error {
 					d.packetLog.Update(snap, "")
 					d.throughput.Update(snap)
 					d.anomalyPanel.Update(snap)
+					d.storyPanel.Update(snap, selectedIP)
 				})
 			}
 		}

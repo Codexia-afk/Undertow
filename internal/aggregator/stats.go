@@ -36,6 +36,7 @@ type Snapshot struct {
 	ThroughputHistory []uint64 // Bytes per second over last N seconds
 	RecentPackets     []model.PacketInfo
 	Anomalies         []model.AnomalyEvent
+	StoryTracker      *narrative.StoryTracker
 }
 
 // RingBuffer stores a fixed-size ring of generic items.
@@ -105,6 +106,7 @@ type StatsManager struct {
 	publishedPtr    atomic.Pointer[Snapshot]
 	droppedCountPtr *uint64 // Shared pointer to atomic dropped count from capture producer
 	detector        *anomaly.Detector
+	storyTracker    *narrative.StoryTracker
 }
 
 // NewStatsManager initializes stats state with ring buffer capacities and anomaly detector.
@@ -121,6 +123,7 @@ func NewStatsManager(throughputSecs, recentPktsCap, anomaliesCap int, droppedPtr
 		},
 		droppedCountPtr: droppedPtr,
 		detector:        anomaly.NewDetector(anomalyCfg),
+		storyTracker:    narrative.NewStoryTracker(),
 	}
 
 	// Publish initial empty snapshot
@@ -135,6 +138,11 @@ func (sm *StatsManager) AddPacket(pkt model.PacketInfo) {
 	st.TotalPackets++
 	st.TotalBytes += uint64(pkt.Length)
 	st.currentSecBytes += uint64(pkt.Length)
+
+	// Record story timeline event
+	if sm.storyTracker != nil {
+		sm.storyTracker.RecordPacket(pkt)
+	}
 
 	// Update protocol counter
 	st.ProtocolCounts[pkt.Protocol]++
@@ -205,10 +213,13 @@ func (sm *StatsManager) TickSecond() {
 	st.currentSecBytes = 0
 }
 
-// AddAnomaly records an anomaly event.
+// AddAnomaly records an anomaly event and passes it to the host story timeline.
 // OWNERSHIP: Must only be called by the aggregator goroutine.
 func (sm *StatsManager) AddAnomaly(evt model.AnomalyEvent) {
 	sm.stats.AnomaliesRing.Push(evt)
+	if sm.storyTracker != nil {
+		sm.storyTracker.RecordAnomaly(evt)
+	}
 }
 
 // PublishSnapshot creates a deep copy of current metrics and updates publishedPtr atomically.
@@ -255,6 +266,7 @@ func (sm *StatsManager) PublishSnapshot() {
 		ThroughputHistory: st.ThroughputRing.Slice(),
 		RecentPackets:     st.RecentPacketsRing.Slice(),
 		Anomalies:         st.AnomaliesRing.Slice(),
+		StoryTracker:      sm.storyTracker,
 	}
 
 	sm.publishedPtr.Store(snap)
