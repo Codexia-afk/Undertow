@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
+
+	"netwatch/internal/replay"
 )
 
 // Engine manages packet capture from a pcap handle into a buffered channel.
@@ -13,13 +15,15 @@ type Engine struct {
 	handle       *pcap.Handle
 	packetChan   chan gopacket.Packet
 	droppedCount uint64
+	recorder     *replay.Recorder
 }
 
 // NewEngine constructs a new capture Engine.
-func NewEngine(handle *pcap.Handle, bufferSize int) *Engine {
+func NewEngine(handle *pcap.Handle, bufferSize int, recorder *replay.Recorder) *Engine {
 	return &Engine{
 		handle:     handle,
 		packetChan: make(chan gopacket.Packet, bufferSize),
+		recorder:   recorder,
 	}
 }
 
@@ -49,6 +53,11 @@ func (e *Engine) Run(ctx context.Context) {
 			if !ok {
 				return
 			}
+
+			if e.recorder != nil {
+				_ = e.recorder.WritePacket(pkt)
+			}
+
 			// Non-blocking write to packetChan.
 			// BACKPRESSURE STORY: If packetChan buffer is full, drop the packet
 			// immediately to avoid stalling libpcap kernel ring buffers.

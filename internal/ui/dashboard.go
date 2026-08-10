@@ -9,6 +9,7 @@ import (
 	"github.com/rivo/tview"
 
 	"netwatch/internal/aggregator"
+	"netwatch/internal/replay"
 )
 
 type Dashboard struct {
@@ -27,13 +28,14 @@ type Dashboard struct {
 	bpfFilterExpr   string
 	applyFilterFunc  func(expr string) error
 	redactIPs       bool
+	replayEngine    *replay.ReplayEngine
 	filterModal     *tview.Flex
 	filterInput     *tview.InputField
 	filterErrorMsg  *tview.TextView
 	storyModal      *tview.Flex
 }
 
-func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter string, applyFilterFunc func(expr string) error, redactIPs bool) *Dashboard {
+func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter string, applyFilterFunc func(expr string) error, redactIPs bool, replayEngine *replay.ReplayEngine) *Dashboard {
 	app := tview.NewApplication()
 	pages := tview.NewPages()
 
@@ -79,6 +81,7 @@ func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter strin
 		bpfFilterExpr:   initialFilter,
 		applyFilterFunc: applyFilterFunc,
 		redactIPs:       redactIPs,
+		replayEngine:    replayEngine,
 	}
 
 	d.setupFilterModal()
@@ -166,8 +169,43 @@ func (d *Dashboard) setupKeybindings() {
 			return event
 		}
 
+		// Replay navigation keybindings
+		if d.replayEngine != nil {
+			switch event.Key() {
+			case tcell.KeyRight:
+				d.replayEngine.StepSec(5)
+				return nil
+			case tcell.KeyLeft:
+				d.replayEngine.StepSec(-5)
+				return nil
+			case tcell.KeyHome:
+				d.replayEngine.JumpStart()
+				return nil
+			case tcell.KeyEnd:
+				d.replayEngine.JumpEnd()
+				return nil
+			}
+		}
+
 		if event.Key() == tcell.KeyRune {
 			switch event.Rune() {
+			case ' ':
+				if d.replayEngine != nil {
+					d.replayEngine.TogglePause()
+				} else {
+					d.packetLog.TogglePause()
+				}
+				return nil
+			case '+', '=':
+				if d.replayEngine != nil {
+					d.replayEngine.CycleSpeed()
+				}
+				return nil
+			case '-', '_':
+				if d.replayEngine != nil {
+					d.replayEngine.SetSpeed(1.0)
+				}
+				return nil
 			case 'q', 'Q':
 				d.app.Stop()
 				return nil
@@ -207,8 +245,13 @@ func (d *Dashboard) Run(ctx context.Context) error {
 			case <-ticker.C:
 				snap := d.statsManager.GetSnapshot()
 				selectedIP := d.topTalkers.SelectedIP()
+				var repStatus replay.ReplayStatus
+				if d.replayEngine != nil {
+					repStatus = d.replayEngine.Status()
+				}
+
 				d.app.QueueUpdateDraw(func() {
-					d.topBar.Update(snap, d.packetLog.IsPaused(), d.bpfFilterExpr)
+					d.topBar.Update(snap, d.packetLog.IsPaused(), d.bpfFilterExpr, repStatus)
 					d.topTalkers.Update(snap)
 					d.protoBreakdown.Update(snap)
 					d.packetLog.Update(snap, "")

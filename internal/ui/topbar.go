@@ -7,6 +7,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"netwatch/internal/aggregator"
+	"netwatch/internal/replay"
 )
 
 type TopBar struct {
@@ -30,17 +31,34 @@ func (tb *TopBar) View() *tview.TextView {
 	return tb.view
 }
 
-func (tb *TopBar) Update(snap *aggregator.Snapshot, paused bool, filterExpr string) {
+func (tb *TopBar) Update(snap *aggregator.Snapshot, paused bool, filterExpr string, replayStatus replay.ReplayStatus) {
 	elapsed := time.Since(snap.StartTime).Truncate(time.Second)
 
 	pauseState := "[green]LIVE[white]"
-	if paused {
+	if paused || replayStatus.IsPaused {
 		pauseState = "[yellow]PAUSED[white]"
 	}
 
 	filterDisplay := "[gray]None[white]"
 	if filterExpr != "" {
 		filterDisplay = fmt.Sprintf("[yellow]%s[white]", filterExpr)
+	}
+
+	if replayStatus.IsReplay {
+		curTimeStr := replayStatus.CurrentTime.Format("15:04:05")
+		endTimeStr := replayStatus.EndTime.Format("15:04:05")
+		text := fmt.Sprintf(
+			" [bold yellow]REPLAY MODE[white] | [cyan]TIME:[white] %s / %s (%.1fx) | [cyan]FILTER:[white] %s | [cyan]PKTS:[white] [bold]%d[white] | [cyan]BYTES:[white] [bold]%s[white] | [cyan]STATUS:[white] %s",
+			curTimeStr,
+			endTimeStr,
+			replayStatus.Speed,
+			filterDisplay,
+			snap.TotalPackets,
+			formatBytes(snap.TotalBytes),
+			pauseState,
+		)
+		tb.view.SetText(text)
+		return
 	}
 
 	text := fmt.Sprintf(
