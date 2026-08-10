@@ -10,6 +10,7 @@ import (
 
 	"netwatch/internal/aggregator"
 	"netwatch/internal/replay"
+	"netwatch/internal/report"
 )
 
 type Dashboard struct {
@@ -204,6 +205,16 @@ func (d *Dashboard) setupKeybindings() {
 			case '-', '_':
 				if d.replayEngine != nil {
 					d.replayEngine.SetSpeed(1.0)
+				}
+				return nil
+			case 'e', 'E':
+				snap := d.statsManager.GetSnapshot()
+				fileName := fmt.Sprintf("netwatch_report_%s.html", time.Now().Format("150405"))
+				err := report.GenerateHTMLReport(snap, d.topBar.iface, d.bpfFilterExpr, d.redactIPs, fileName)
+				if err == nil {
+					d.topBar.view.SetText(fmt.Sprintf(" [bold green]EXPORT SUCCESS:[white] Report saved to %s", fileName))
+				} else {
+					d.topBar.view.SetText(fmt.Sprintf(" [bold red]EXPORT ERROR:[white] %v", err))
 				}
 				return nil
 			case 'q', 'Q':
