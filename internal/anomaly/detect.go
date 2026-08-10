@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 // Config holds configurable threshold limits for anomaly detection heuristics.

@@ -7,7 +7,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 
-	"netwatch/internal/replay"
+	"github.com/Codexia-afk/Undertow/internal/replay"
 )
 
 // Engine manages packet capture from a pcap handle into a buffered channel.

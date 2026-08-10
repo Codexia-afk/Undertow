@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 // EventType categorizes timeline milestones for narrative synthesis.

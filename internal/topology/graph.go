@@ -5,7 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"netwatch/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 // RenderTopologyGraph renders an ASCII/Unicode network topology map from the aggregator snapshot.

@@ -1,9 +1,9 @@
 .PHONY: build run setcap test lint clean
 
-BINARY_NAME=netwatch
+BINARY_NAME=undertow
 
 build:
-	go build -o $(BINARY_NAME) ./cmd/netwatch
+	go build -o $(BINARY_NAME) ./cmd/undertow
 
 run: build
 	sudo ./$(BINARY_NAME) -i eth0

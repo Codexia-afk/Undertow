@@ -8,10 +8,12 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"netwatch/internal/aggregator"
-	"netwatch/internal/replay"
-	"netwatch/internal/report"
-	"netwatch/internal/topology"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/ai"
+	"github.com/Codexia-afk/Undertow/internal/replay"
+	"github.com/Codexia-afk/Undertow/internal/report"
+	"github.com/Codexia-afk/Undertow/internal/topology"
+	"github.com/Codexia-afk/Undertow/internal/ui/views"
 )
 
 type Dashboard struct {
@@ -26,6 +28,7 @@ type Dashboard struct {
 	anomalyPanel   *AnomalyPanel
 	storyPanel     *StoryPanel
 	processPanel   *ProcessListPanel
+	topoComponent  *views.TopologyView
 	mainFlex       *tview.Flex
 
 	bpfFilterExpr   string
@@ -37,8 +40,10 @@ type Dashboard struct {
 	filterErrorMsg  *tview.TextView
 	storyModal      *tview.Flex
 	topoModal       *tview.Flex
-	topoView        *tview.TextView
 	procModal       *tview.Flex
+	aiModal         *tview.Flex
+	aiView          *tview.TextView
+	aiClient        *ai.Client
 }
 
 func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter string, applyFilterFunc func(expr string) error, redactIPs bool, replayEngine *replay.ReplayEngine) *Dashboard {
@@ -96,6 +101,7 @@ func NewDashboard(iface string, sm *aggregator.StatsManager, initialFilter strin
 	d.setupStoryModal()
 	d.setupTopoModal()
 	d.setupProcModal()
+	d.setupAIModal()
 	d.setupKeybindings()
 	return d
 }
@@ -166,12 +172,12 @@ func (d *Dashboard) setupStoryModal() {
 }
 
 func (d *Dashboard) setupTopoModal() {
-	d.topoView = tview.NewTextView().SetDynamicColors(true).SetScrollable(true)
+	d.topoComponent = views.NewTopologyView()
 	topoBox := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(d.topoView, 0, 1, true).
+		AddItem(d.topoComponent.View(), 0, 1, true).
 		AddItem(tview.NewTextView().SetText(" Press ESC to return to main dashboard ").SetTextAlign(tview.AlignCenter), 1, 1, false)
 
-	topoBox.SetBorder(true).SetTitle(" Network Topology Graph ").SetTitleAlign(tview.AlignCenter)
+	topoBox.SetBorder(true).SetTitle(" ASCII Network Topology Graph ").SetTitleAlign(tview.AlignCenter)
 	topoBox.SetBorderColor(tcell.ColorCyan)
 
 	d.topoModal = tview.NewFlex().SetDirection(tview.FlexRow).
@@ -201,7 +207,26 @@ func (d *Dashboard) setupProcModal() {
 			AddItem(nil, 0, 1, false), 18, 1, true).
 		AddItem(nil, 0, 1, false)
 
-	d.pages.AddPage("procModal", d.procModal, true, false)
+func (d *Dashboard) setupAIModal() {
+	d.aiView = tview.NewTextView().SetDynamicColors(true).SetScrollable(true)
+	d.aiClient = ai.NewClient("", "llama3")
+
+	aiBox := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(d.aiView, 0, 1, true).
+		AddItem(tview.NewTextView().SetText(" Press ESC to return to main dashboard ").SetTextAlign(tview.AlignCenter), 1, 1, false)
+
+	aiBox.SetBorder(true).SetTitle(" Ask AI — Offline Incident Response Summary ").SetTitleAlign(tview.AlignCenter)
+	aiBox.SetBorderColor(tcell.ColorGreen)
+
+	d.aiModal = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexColumn).
+			AddItem(nil, 0, 1, false).
+			AddItem(aiBox, 90, 1, true).
+			AddItem(nil, 0, 1, false), 22, 1, true).
+		AddItem(nil, 0, 1, false)
+
+	d.pages.AddPage("aiModal", d.aiModal, true, false)
 }
 
 func (d *Dashboard) setupKeybindings() {
@@ -210,8 +235,8 @@ func (d *Dashboard) setupKeybindings() {
 		if frontPage == "filterModal" {
 			return event
 		}
-		if frontPage == "storyModal" || frontPage == "topoModal" || frontPage == "procModal" {
-			if event.Key() == tcell.KeyEscape || event.Rune() == 'g' || event.Rune() == 'P' {
+		if frontPage == "storyModal" || frontPage == "topoModal" || frontPage == "procModal" || frontPage == "aiModal" {
+			if event.Key() == tcell.KeyEscape || event.Rune() == 'g' || event.Rune() == 'P' || event.Rune() == 'A' || event.Rune() == 'a' {
 				d.pages.HidePage(frontPage)
 				return nil
 			}
@@ -256,14 +281,31 @@ func (d *Dashboard) setupKeybindings() {
 				return nil
 			case 'g', 'G':
 				snap := d.statsManager.GetSnapshot()
-				d.topoView.SetText(topology.RenderTopologyGraph(snap))
+				d.topoComponent.Update(snap)
 				d.pages.ShowPage("topoModal")
-				d.app.SetFocus(d.topoView)
+				d.app.SetFocus(d.topoComponent.View())
 				return nil
 			case 'P':
 				d.processPanel.Update()
 				d.pages.ShowPage("procModal")
 				d.app.SetFocus(d.processPanel.View())
+				return nil
+			case 'a', 'A':
+				selectedIP := d.topTalkers.SelectedIP()
+				snap := d.statsManager.GetSnapshot()
+				flowStory := d.storyPanel.GetStoryText()
+				anomalies := snap.Anomalies
+
+				d.aiView.SetText("[yellow]🤖 Connecting to local AI engine (Ollama)... Generating Incident Response Summary...[white]\n")
+				d.pages.ShowPage("aiModal")
+				d.app.SetFocus(d.aiView)
+
+				go func() {
+					summary, _ := d.aiClient.GenerateIncidentSummary(selectedIP, flowStory, anomalies)
+					d.app.QueueUpdateDraw(func() {
+						d.aiView.SetText(summary)
+					})
+				}()
 				return nil
 			case 'e', 'E':
 				snap := d.statsManager.GetSnapshot()

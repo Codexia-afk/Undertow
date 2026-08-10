@@ -1,4 +1,4 @@
-module netwatch
+module github.com/Codexia-afk/Undertow
 
 go 1.22
 
@@ -6,6 +6,7 @@ require (
 	github.com/gdamore/tcell/v2 v2.7.4
 	github.com/google/gopacket v1.13.0
 	github.com/rivo/tview v0.0.0-20240524063012-037df494fb76
+	golang.org/x/sys v0.17.0
 )
 
 require (
@@ -14,7 +15,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	golang.org/x/net v0.0.0-20190603091049-6f9a6c521610 // indirect
-	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )

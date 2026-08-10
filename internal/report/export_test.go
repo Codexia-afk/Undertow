@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/aggregator"
-	"netwatch/internal/anomaly"
-	"netwatch/internal/baseline"
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/anomaly"
+	"github.com/Codexia-afk/Undertow/internal/baseline"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 func TestGenerateHTMLReport(t *testing.T) {

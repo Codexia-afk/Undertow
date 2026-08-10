@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 // HostMetrics maintains EMA averages and running variance using Welford's algorithm.
@@ -29,13 +29,13 @@ type Config struct {
 	WarmupSec int     // Warm-up duration in seconds before flagging alerts (default 60)
 	Alpha     float64 // EMA smoothing factor (default 0.1)
 	SigmaK    float64 // Standard deviation multiplier threshold (default 3.0)
-	FilePath  string  // Persistence file path (default ~/.netwatch/baseline.json)
+	FilePath  string  // Persistence file path (default ~/.undertow/baseline.json)
 }
 
 // DefaultConfig returns recommended defaults for baselining.
 func DefaultConfig() Config {
 	home, _ := os.UserHomeDir()
-	defaultFile := filepath.Join(home, ".netwatch", "baseline.json")
+	defaultFile := filepath.Join(home, ".undertow", "baseline.json")
 	return Config{
 		WarmupSec: 60,
 		Alpha:     0.1,

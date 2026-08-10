@@ -6,7 +6,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"netwatch/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
 )
 
 type StoryPanel struct {
@@ -42,4 +42,8 @@ func (sp *StoryPanel) Update(snap *aggregator.Snapshot, selectedIP string) {
 	narrative := snap.StoryTracker.GenerateNarrative(selectedIP, sp.redactIPs)
 	sp.view.SetTitle(fmt.Sprintf(" Flow Story Narrative: %s ", selectedIP))
 	sp.view.SetText(narrative)
+}
+
+func (sp *StoryPanel) GetStoryText() string {
+	return sp.view.GetText(false)
 }

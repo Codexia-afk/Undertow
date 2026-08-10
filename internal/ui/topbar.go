@@ -6,8 +6,9 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"netwatch/internal/aggregator"
-	"netwatch/internal/replay"
+
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/replay"
 )
 
 type TopBar struct {
@@ -19,7 +20,7 @@ func NewTopBar(iface string) *TopBar {
 	tv := tview.NewTextView().
 		SetDynamicColors(true).
 		SetRegions(true)
-	tv.SetBorder(true).SetTitle(" [bold yellow]NETWATCH Dashboard[white] ").SetTitleAlign(tview.AlignLeft)
+	tv.SetBorder(true).SetTitle(" [bold yellow]UNDERTOW Dashboard[white] ").SetTitleAlign(tview.AlignLeft)
 	tv.SetBorderColor(tcell.ColorDodgerBlue)
 	return &TopBar{
 		view:  tv,

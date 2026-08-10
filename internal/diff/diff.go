@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"netwatch/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
 )
 
 // DiffResult holds comparative analysis details between two snapshot sessions.
@@ -80,7 +80,7 @@ func CompareSnapshots(fileA, fileB string) (DiffResult, string, error) {
 	// 3. Format Terminal Output
 	var sb strings.Builder
 	sb.WriteString("========================================================\n")
-	sb.WriteString(fmt.Sprintf(" 🔍 NETWATCH SESSION SNAPSHOT DIFF: %s vs %s\n", filepathBase(fileA), filepathBase(fileB)))
+	sb.WriteString(fmt.Sprintf(" 🔍 UNDERTOW SESSION SNAPSHOT DIFF: %s vs %s\n", filepathBase(fileA), filepathBase(fileB)))
 	sb.WriteString("========================================================\n\n")
 
 	sb.WriteString(fmt.Sprintf("• Total Traffic Drift: %.1f%% (%d -> %d packets)\n",

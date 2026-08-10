@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 func TestAnomalyDetector_PortScan(t *testing.T) {

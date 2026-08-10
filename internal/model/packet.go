@@ -61,6 +61,7 @@ type FlowStat struct {
 	LastSeen    time.Time
 	PID         int
 	ProcessName string
+	User        string
 }
 
 // AnomalyEvent describes a flagged security anomaly event.
@@ -95,8 +96,11 @@ type PacketInfo struct {
 	HTTPPath   string
 	JA3Hash    string // TLS Client Hello MD5 hash
 	JA3Label   string // Matched client label (e.g. "curl / libcurl")
-	JA3Raw     string // Raw JA3 string
-	Payload    []byte
+	JA3Raw      string // Raw JA3 string
+	JA4String   string // JA4+ canonical fingerprint string
+	JA4Label    string // Matched JA4 client/malware label
+	ThreatAlert string // IOC threat feed alert string (e.g. "[!] THREAT_ALERT")
+	Payload     []byte
 }
 
 // Summary returns a one-line formatted summary of the packet for CLI output.

@@ -8,9 +8,19 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"netwatch/internal/model"
-	"netwatch/internal/tls"
+	"github.com/Codexia-afk/Undertow/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/security"
+	"github.com/Codexia-afk/Undertow/internal/tls"
 )
+
+var threatEngine = security.NewEngine()
+
+// SetThreatEngine updates the global Threat Intelligence engine instance.
+func SetThreatEngine(e *security.Engine) {
+	if e != nil {
+		threatEngine = e
+	}
+}
 
 // DecodePacket transforms a gopacket.Packet into a normalized model.PacketInfo.
 // It safely handles missing/corrupt layers without panicking.
@@ -112,7 +122,7 @@ func DecodePacket(packet gopacket.Packet) model.PacketInfo {
 		}
 	}
 
-	// C. TLS ClientHello / JA3 Fingerprinting
+	// C. TLS ClientHello / JA3 & JA4 Fingerprinting
 	if info.Protocol == "TCP" {
 		if appLayer := packet.ApplicationLayer(); appLayer != nil {
 			payload := appLayer.Payload()
@@ -121,6 +131,27 @@ func DecodePacket(packet gopacket.Packet) model.PacketInfo {
 				info.JA3Hash = ja3Res.Hash
 				info.JA3Label = ja3Res.Label
 				info.JA3Raw = ja3Res.RawString
+			}
+			if ja4Res, ok := CalculateJA4(payload); ok {
+				info.Protocol = "TLS"
+				info.JA4String = ja4Res.JA4String
+				info.JA4Label = ja4Res.Label
+				if ja4Res.IsMalware {
+					info.ThreatAlert = fmt.Sprintf("[!] THREAT_ALERT: %s", ja4Res.Label)
+				}
+			}
+		}
+	}
+
+	// Threat Intelligence IOC Lookup
+	if info.ThreatAlert == "" {
+		if matched, cat := threatEngine.MatchIP(info.SrcIP); matched {
+			info.ThreatAlert = fmt.Sprintf("[!] THREAT_ALERT: %s (%s)", cat, info.SrcIP)
+		} else if matched, cat := threatEngine.MatchIP(info.DstIP); matched {
+			info.ThreatAlert = fmt.Sprintf("[!] THREAT_ALERT: %s (%s)", cat, info.DstIP)
+		} else if info.DNSQuery != "" {
+			if matched, cat := threatEngine.MatchDomain(info.DNSQuery); matched {
+				info.ThreatAlert = fmt.Sprintf("[!] THREAT_ALERT: %s (%s)", cat, info.DNSQuery)
 			}
 		}
 	}

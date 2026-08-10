@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/google/gopacket"
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 // WorkerPool manages N concurrent decoder workers.

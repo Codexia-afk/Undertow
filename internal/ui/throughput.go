@@ -6,7 +6,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"netwatch/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
 )
 
 type ThroughputPanel struct {

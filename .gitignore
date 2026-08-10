@@ -1,6 +1,6 @@
 # Binaries
-netwatch
-netwatch.exe
+undertow
+undertow.exe
 *.exe
 *.dll
 *.so

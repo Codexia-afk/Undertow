@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/aggregator"
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 func TestRenderTopologyGraph(t *testing.T) {

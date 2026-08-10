@@ -1,0 +1,9 @@
+{
+  "t13d1516h2_8daaf6152771_02713d6af862": "Cobalt Strike C2 Beacon",
+  "t13d1516h2_e3b0c44298fc_1c0e3b0c4429": "LummaC2 Infostealer",
+  "t12d080400_a0b1c2d3e4f5_123456789abc": "Evilginx Phishing Toolkit",
+  "t13d1215h2_7718daaf6152_02713d6af862": "IcedID Malware Loader",
+  "t13d3115h2_8daaf6152771_02713d6af862": "Google Chrome Browser",
+  "t13d040600_000000000000_000000000000": "curl / libcurl client",
+  "t13d060500_111122223333_444455556666": "Go net/http Client"
+}

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"netwatch/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
 )
 
 // ReportData holds sanitized view data for HTML report template rendering.
@@ -63,7 +63,7 @@ func GenerateHTMLReport(snap *aggregator.Snapshot, iface, filterExpr string, red
 	protoSVG := renderProtocolSVG(snap.ProtocolCounts, snap.TotalPackets)
 
 	data := ReportData{
-		Title:               "NetWatch SOC Traffic Intelligence Report",
+		Title:               "Undertow SOC Traffic Intelligence Report",
 		GeneratedAt:         time.Now().Format("2006-01-02 15:04:05 MST"),
 		Interface:           iface,
 		Filter:              filterDisplay,
@@ -233,7 +233,7 @@ const htmlReportTemplate = `<!DOCTYPE html>
       <h1 class="title">🛡️ {{.Title}}</h1>
       <div style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Generated: {{.GeneratedAt}}</div>
     </div>
-    <span class="badge">NetWatch Standalone Report</span>
+    <span class="badge">Undertow Standalone Report</span>
   </div>
 
   <div class="grid">

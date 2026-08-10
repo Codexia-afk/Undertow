@@ -5,11 +5,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"netwatch/internal/anomaly"
-	"netwatch/internal/baseline"
-	"netwatch/internal/model"
-	"netwatch/internal/narrative"
-	"netwatch/internal/webhook"
+	"github.com/Codexia-afk/Undertow/internal/anomaly"
+	"github.com/Codexia-afk/Undertow/internal/baseline"
+	"github.com/Codexia-afk/Undertow/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/narrative"
+	"github.com/Codexia-afk/Undertow/internal/webhook"
 )
 
 // TalkerStat records per-IP bandwidth and packet counts.

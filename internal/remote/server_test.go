@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/aggregator"
-	"netwatch/internal/anomaly"
-	"netwatch/internal/baseline"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/anomaly"
+	"github.com/Codexia-afk/Undertow/internal/baseline"
 )
 
 func TestRemoteServer_HTTPAndAuth(t *testing.T) {

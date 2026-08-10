@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 func TestStoryTracker_GenerateNarrative(t *testing.T) {

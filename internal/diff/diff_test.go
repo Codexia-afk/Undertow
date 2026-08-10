@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"netwatch/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
 )
 
 func TestCompareSnapshots(t *testing.T) {

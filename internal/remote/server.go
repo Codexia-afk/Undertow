@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"netwatch/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
 )
 
 //go:embed viewer.html

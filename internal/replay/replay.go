@@ -9,8 +9,8 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 
-	"netwatch/internal/decode"
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/decode"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 // ReplayStatus holds virtual clock playback state.

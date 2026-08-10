@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/anomaly"
+	"github.com/Codexia-afk/Undertow/internal/baseline"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 func TestAggregator_ConcurrencyAndRace(t *testing.T) {

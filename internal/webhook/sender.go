@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"time"
 
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 // WebhookPayload represents a structured JSON alert event posted to external webhooks.
 type WebhookPayload struct {
-	Timestamp   string             `json:"timestamp"`
-	EventType   string             `json:"event_type"` // "ANOMALY_ALERT" or "SESSION_SNAPSHOT"
+	Timestamp   string              `json:"timestamp"`
+	EventType   string              `json:"event_type"` // "ANOMALY_ALERT" or "SESSION_SNAPSHOT"
 	Anomaly     *model.AnomalyEvent `json:"anomaly,omitempty"`
-	Message     string             `json:"message"`
+	Message     string              `json:"message"`
 }
 
 // Sender delivers security alert payloads to HTTP POST webhook endpoints.
@@ -57,7 +57,7 @@ func (s *Sender) SendAnomalyAlert(evt model.AnomalyEvent) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "NetWatch-Webhook-Engine/3.0.0")
+	req.Header.Set("User-Agent", "Undertow-Webhook-Engine/3.0.0")
 
 	resp, err := s.client.Do(req)
 	if err != nil {

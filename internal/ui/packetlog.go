@@ -6,8 +6,9 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"netwatch/internal/aggregator"
-	"netwatch/internal/model"
+
+	"github.com/Codexia-afk/Undertow/internal/aggregator"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 type PacketLogPanel struct {
@@ -91,18 +92,31 @@ func (pl *PacketLogPanel) Update(snap *aggregator.Snapshot, inAppFilter string) 
 		}
 
 		extra := ""
-		if pkt.Protocol == "TCP" {
-			extra = " " + pkt.TCPFlags.String()
-		} else if pkt.Protocol == "DNS" && pkt.DNSQuery != "" {
-			extra = fmt.Sprintf(" Q:%s (%s)", pkt.DNSQuery, pkt.DNSType)
-		} else if pkt.Protocol == "HTTP" && pkt.HTTPMethod != "" {
-			extra = fmt.Sprintf(" %s %s%s", pkt.HTTPMethod, pkt.HTTPHost, pkt.HTTPPath)
-		} else if pkt.Protocol == "TLS" && pkt.JA3Hash != "" {
-			extra = fmt.Sprintf(" JA3:[yellow]%s[white] (%s)", pkt.JA3Hash[:8], pkt.JA3Label)
+			protoColor = "[red]"
 		}
 
-		line := fmt.Sprintf("%s  %-21s -> %-21s  %s%-6s[white] %5d B%s\n",
-			ts, srcStr, dstStr, colorTag, pkt.Protocol, pkt.Length, extra)
+		detail := ""
+		if pkt.Protocol == "TCP" {
+			detail = pkt.TCPFlags.String()
+		} else if pkt.Protocol == "DNS" && pkt.DNSQuery != "" {
+			detail = fmt.Sprintf("Q:%s (%s)", pkt.DNSQuery, pkt.DNSType)
+		} else if pkt.Protocol == "HTTP" && pkt.HTTPMethod != "" {
+			detail = fmt.Sprintf("%s %s%s", pkt.HTTPMethod, pkt.HTTPHost, pkt.HTTPPath)
+		} else if pkt.Protocol == "TLS" && pkt.JA3Hash != "" {
+			detail = fmt.Sprintf("JA3:[yellow]%s[white] (%s)", pkt.JA3Hash[:8], pkt.JA3Label)
+		}
+
+		badge := ""
+		if pkt.ThreatAlert != "" {
+			badge = "[bold red][!] THREAT_ALERT[white] "
+		} else if pkt.JA4Label != "" && pkt.JA4Label != "Unknown TLS Client" {
+			badge = fmt.Sprintf("[yellow][%s][white] ", pkt.JA4Label)
+		} else if pkt.JA3Label != "" && pkt.JA3Label != "Unknown TLS Client" {
+			badge = fmt.Sprintf("[yellow][%s][white] ", pkt.JA3Label)
+		}
+
+		line := fmt.Sprintf(" %s %s%s:%d -> %s:%d %s [cyan]%s[white] (%d B) %s\n",
+			timestamp, badge, pkt.SrcIP, pkt.SrcPort, pkt.DstIP, pkt.DstPort, protoColor, pkt.Protocol, pkt.Length, detail)
 		sb.WriteString(line)
 	}
 

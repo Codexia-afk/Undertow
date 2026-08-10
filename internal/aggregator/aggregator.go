@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"netwatch/internal/model"
+	"github.com/Codexia-afk/Undertow/internal/model"
 )
 
 // Aggregator runs as a single-owner goroutine processing decoded packets.
