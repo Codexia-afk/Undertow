@@ -1,6 +1,6 @@
 # Binaries
-undertow
-undertow.exe
+/undertow
+/undertow.exe
 *.exe
 *.dll
 *.so
