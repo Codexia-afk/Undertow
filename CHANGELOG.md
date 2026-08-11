@@ -4,6 +4,14 @@ All notable changes to **Undertow** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.1] - 2026-08-11
+
+### 🐛 Fixed & Improved
+- **Git Tracking & Build Fix**: Updated `.gitignore` with root-anchored binary pattern (`/undertow`) to ensure `cmd/undertow/main.go` is tracked and cloned correctly across all environments.
+- **Cross-Platform Execution Verification**: Fully reverified build and execution instructions for Linux (`apt`), macOS (`brew` + `sudo`), and Windows (`powershell` + `Npcap`).
+- **Makefile Optimization**: Added `undertow.exe` to `make clean` target for Windows compatibility.
+- **SEO & Documentation Optimization**: Enhanced GitHub README metadata, keywords, features, CLI flag references, and multi-platform setup guides.
+
 ---
 
 ## [5.0.0] - 2026-08-10
