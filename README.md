@@ -82,37 +82,52 @@ Runs in headless daemon mode, streaming real-time JSON alert payloads to externa
 
 ```bash
 # Install prerequisites (Debian/Ubuntu/Kali/Mint)
-sudo apt update && sudo apt install -y libpcap-dev build-essential git
+sudo apt update && sudo apt install -y golang-go libpcap-dev build-essential git
 
-# Clone and Build Undertow
+# Clone and build Undertow
 git clone https://github.com/Codexia-afk/Undertow.git
 cd Undertow
 go build -o undertow ./cmd/undertow
 
-# Grant net capture capabilities & run
+# Grant raw socket capabilities (no root required for execution) & run
 sudo setcap cap_net_raw,cap_net_admin=eip ./undertow
-./undertow -i eth0 -serve :8080
+./undertow -i eth0 -export report.html
 ```
 
 ### macOS (Apple Silicon M1/M2/M3/M4 & Intel)
 
 ```bash
+# Install Homebrew dependencies
 brew install libpcap go
+
+# Clone and build Undertow
 git clone https://github.com/Codexia-afk/Undertow.git
 cd Undertow
 go build -o undertow ./cmd/undertow
+
+# Run with sudo (required for raw BPF capture on macOS)
 sudo ./undertow -i en0 -export report.html
 ```
 
 ### Windows (PowerShell & Command Prompt)
 
 ```powershell
-# 1. Install Npcap (WinPcap compatibility mode enabled)
-# 2. Build or run Undertow
+# 1. Download & Install Npcap (https://npcap.com)
+#    Make sure to check "Install Npcap in WinPcap API-compatible Mode" during setup.
+
+# 2. Clone and build Undertow in PowerShell (as Administrator)
+git clone https://github.com/Codexia-afk/Undertow.git
+cd Undertow
 go build -o undertow.exe ./cmd/undertow
 
-# 3. Replay offline pcap or run session diff
-.\undertow.exe -replay C:\captures\sample.pcap -listen :8080
+# 3. List available network interfaces on Windows
+.\undertow.exe
+
+# 4. Start live packet capture (specify interface device string, e.g. \Device\NPF_{...})
+.\undertow.exe -i "\Device\NPF_{YOUR_ADAPTER_GUID}" -export report.html
+
+# 5. Replay offline pcap or run session snapshot diff
+.\undertow.exe -replay sample.pcap -listen :8080
 .\undertow.exe diff snapA.json snapB.json --output-md diff.md
 ```
 
